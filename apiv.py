@@ -5,6 +5,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import os
+database_url = os.environ.get('DATABASE_URL')
 
 # Configuration de la base de données
 DATABASE_URL = "postgresql://postgres:1234localhost:5432/apiutilisateur"
