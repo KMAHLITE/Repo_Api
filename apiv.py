@@ -63,6 +63,7 @@ def get_db():
     finally:
         db.close()
 
+@app.api_route('/', methods=['GET', 'POST', 'PUT', 'DELETE' 'HEAD'])
 # Endpoint de base
 @app.get("/")
 def read_root():
