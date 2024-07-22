@@ -6,12 +6,12 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import os
-database_url = os.environ.get('DATABASE_URL')
+from bcrypt import hashpw, gensalt
+
+database_url = os.environ.get('DATABASE_URL', "postgresql://postgres:1234@localhost:5432/apiutilisateur")
 
 # Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:1234@localhost:5432/apiutilisateur"
-
-engine = create_engine(DATABASE_URL)
+engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -34,6 +34,13 @@ class UtilisateurUpdate(BaseModel):
     email: str
     password: str
 
+class UtilisateurResponse(BaseModel):
+    id: int
+    email: str
+
+    class Config:
+        from_attributes = True
+
 # Initialisation de l'application FastAPI
 app = FastAPI()
 
@@ -42,10 +49,10 @@ orig_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=orig_origins,  # Liste des origines autorisées
+    allow_origins=orig_origins,
     allow_credentials=False,
-    allow_methods=["*"],  # Autoriser toutes les méthodes HTTP (GET, POST, etc.)
-    allow_headers=["*"],  # Autoriser tous les en-têtes HTTP
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Dépendance pour obtenir la session de base de données
@@ -62,21 +69,22 @@ def read_root():
     return {"message": "Bienvenue à l'API des utilisateurs"}
 
 # Endpoint pour créer un utilisateur
-@app.post("/utilisateur/", response_model=UtilisateurCreate)
+@app.post("/utilisateur/", response_model=UtilisateurResponse)
 def ajouter_utilisateur(utilisateur: UtilisateurCreate, db: Session = Depends(get_db)):
-    db_utilisateur = Utilisateur(email=utilisateur.email, password=utilisateur.password)
+    hashed_password = hashpw(utilisateur.password.encode('utf-8'), gensalt()).decode('utf-8')
+    db_utilisateur = Utilisateur(email=utilisateur.email, password=hashed_password)
     db.add(db_utilisateur)
     db.commit()
     db.refresh(db_utilisateur)
     return db_utilisateur
 
 # Endpoint pour lire tous les utilisateurs
-@app.get("/utilisateurs/", response_model=List[UtilisateurCreate])
+@app.get("/utilisateurs/", response_model=List[UtilisateurResponse])
 def aff_tous(db: Session = Depends(get_db)):
     return db.query(Utilisateur).all()
 
 # Endpoint pour lire un utilisateur par ID
-@app.get("/utilisateur/{utilisateur_id}", response_model=UtilisateurCreate)
+@app.get("/utilisateur/{utilisateur_id}", response_model=UtilisateurResponse)
 def aff_par_id(utilisateur_id: int, db: Session = Depends(get_db)):
     utilisateur = db.query(Utilisateur).filter(Utilisateur.id == utilisateur_id).first()
     if utilisateur is None:
@@ -84,13 +92,13 @@ def aff_par_id(utilisateur_id: int, db: Session = Depends(get_db)):
     return utilisateur
 
 # Endpoint pour modifier un utilisateur par ID
-@app.put("/utilisateur/{utilisateur_id}", response_model=UtilisateurCreate)
+@app.put("/utilisateur/{utilisateur_id}", response_model=UtilisateurResponse)
 def modifier_utilisateur(utilisateur_id: int, utilisateur: UtilisateurUpdate, db: Session = Depends(get_db)):
     db_utilisateur = db.query(Utilisateur).filter(Utilisateur.id == utilisateur_id).first()
     if db_utilisateur is None:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
     db_utilisateur.email = utilisateur.email
-    db_utilisateur.password = utilisateur.password
+    db_utilisateur.password = hashpw(utilisateur.password.encode('utf-8'), gensalt()).decode('utf-8')
     db.commit()
     db.refresh(db_utilisateur)
     return db_utilisateur
