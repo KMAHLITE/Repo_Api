@@ -9,7 +9,7 @@ import os
 database_url = os.environ.get('DATABASE_URL')
 
 # Configuration de la base de données
-DATABASE_URL = "postgresql://postgres:1234localhost:5432/apiutilisateur"
+DATABASE_URL = "postgresql://postgres:1234@localhost:5432/apiutilisateur"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -20,7 +20,7 @@ class Utilisateur(Base):
     __tablename__ = "utilisateur"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, index=True)
-    pass = Column(String, unique=True, index=True)
+    password = Column(String, unique=True, index=True)
 
 # Création des tables
 Base.metadata.create_all(bind=engine)
@@ -28,11 +28,11 @@ Base.metadata.create_all(bind=engine)
 # Schéma Pydantic
 class UtilisateurCreate(BaseModel):
     email: str
-    pass: str
+    password: str
 
 class UtilisateurUpdate(BaseModel):
     email: str
-    pass: str
+    password: str
 
 # Initialisation de l'application FastAPI
 app = FastAPI()
@@ -64,7 +64,7 @@ def read_root():
 # Endpoint pour créer un utilisateur
 @app.post("/utilisateur/", response_model=UtilisateurCreate)
 def ajouter_utilisateur(utilisateur: UtilisateurCreate, db: Session = Depends(get_db)):
-    db_utilisateur = Utilisateur(email=utilisateur.email, pass=utilisateur.pass)
+    db_utilisateur = Utilisateur(email=utilisateur.email, password=utilisateur.password)
     db.add(db_utilisateur)
     db.commit()
     db.refresh(db_utilisateur)
@@ -90,7 +90,7 @@ def modifier_utilisateur(utilisateur_id: int, utilisateur: UtilisateurUpdate, db
     if db_utilisateur is None:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
     db_utilisateur.email = utilisateur.email
-    db_utilisateur.pass = utilisateur.pass
+    db_utilisateur.password = utilisateur.password
     db.commit()
     db.refresh(db_utilisateur)
     return db_utilisateur
