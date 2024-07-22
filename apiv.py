@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from bcrypt import hashpw, gensalt
 
-database_url = os.environ.get('DATABASE_URL', "postgresql://postgres:1234@localhost:5432/apiutilisateur")
+database_url = os.getenv('DATABASE_URL')
 
 # Configuration de la base de données
 engine = create_engine(database_url)
